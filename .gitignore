@@ -2,7 +2,7 @@
 [Bb]uild/
 build_*/
 .DS_Store
-.vs/
-.idea/
+.vscode
+.idea
 SDK/*
 README_ultralight.md
