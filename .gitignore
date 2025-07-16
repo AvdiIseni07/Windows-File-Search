@@ -3,4 +3,5 @@
 build_*/
 .DS_Store
 .vs/
+.idea/
 SDK/*
