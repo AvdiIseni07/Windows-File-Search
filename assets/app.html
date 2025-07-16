@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Search UI</title>
+  <style>
+    :root {
+      --bg: #e9ecf1;
+      --card: #f4f6fa;
+      --primary: #4a90e2;
+      --text: #2c3e50;
+      --shadow: 8px 8px 16px #d1d9e6, -8px -8px 16px #ffffff;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: transparent;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 40px;
+      color: var(--text);
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+      padding: 30px;
+      background: var(--card);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+    }
+
+    h1 {
+      font-size: 20px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 18px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      box-shadow: inset 4px 4px 10px #d1d9e6,
+                  inset -4px -4px 10px #ffffff;
+      background: var(--bg);
+      margin-bottom: 24px;
+      color: var(--text);
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    li {
+      margin-bottom: 12px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 15px;
+      border: none;
+      border-radius: 10px;
+      background: var(--card);
+      box-shadow: var(--shadow);
+      color: var(--text);
+      text-align: left;
+      cursor: pointer;
+      transition: transform 0.1s ease, background 0.3s ease;
+    }
+
+    button:hover {
+      background: #e1e5ec;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    #btnTemplate {
+      display: none;
+    }
+  </style>
+
+  <script>
+    function message(m) {
+      document.getElementById("show").innerHTML = m;
+    }
+
+    function create(content) {
+      var newButton = document.getElementById("btnTemplate").cloneNode(true);
+      newButton.textContent = content;
+      newButton.id = content;
+      newButton.style.display = "block";
+      newButton.onclick = function () {
+        OnClick(newButton.id);
+      };
+
+      var newLi = document.createElement("li");
+      newLi.appendChild(newButton);
+
+      document.getElementById("list").appendChild(newLi);
+    }
+
+    function deleteElement(id) {
+      var element = document.getElementById(id);
+      if (element && element.parentElement) {
+        element.parentElement.remove();
+      }
+    }
+  </script>
+</head>
+<body>
+  <div class="container">
+    <input type="text" id="search" oninput="OnSearch()" placeholder="Type to search..." />
+    <h1 id="show">Results</h1>
+    <ul id="list"></ul>
+    <button id="btnTemplate">Template</button>
+  </div>
+</body>
+</html>
