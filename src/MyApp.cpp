@@ -159,7 +159,7 @@ void toLowerCase(std::string &str)
 }
 
 ultralight::View *mainCaller;
-std::string rootPath = "C:/Users/Shenasi/Downloads/";
+std::string rootPath = "C:";
 std::vector<File> results;
 
 void listenForOpenCommand()
