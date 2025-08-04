@@ -65,12 +65,11 @@ void MyApp::LoadIndex()
         auto name = e.name;
 
         // Getting the prefixes, TODO: Get all possible prefixes of a fixed size
-        int prefixSize = 3;
 
         for (int i = 0; i < name.length(); i++)
         {
-            prefixes[name.substr(0, i)].push_back(index);
-            //prefixes[name.substr(i, prefixSize)].push_back(index);
+            //prefixes[name.substr(0, i)].push_back(index);
+            prefixes[name.substr(i, prefixSize)].push_back(index);
         }
 
         index++;

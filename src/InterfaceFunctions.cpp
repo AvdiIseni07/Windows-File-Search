@@ -107,7 +107,26 @@ JSValueRef MyApp::OnClick(JSContextRef ctx, JSObjectRef function, JSObjectRef th
 
 void MyApp::GetFiles(const std::string &input)
 {
-    for (auto &index : prefixes[input])
+    std::vector<int> candidates;
+
+    for (int i = 0; i < input.size() - prefixSize; i ++)
+    {
+        std::string pref = input.substr(i, prefixSize);
+
+        for (int i = 0; i < candidates.size(); i ++)
+        {
+            if (find(prefixes[pref].begin(), prefixes[pref].end(), candidates[i]) == prefixes[pref].end() && prefixes[pref].size() > 0)
+            {
+                prefixes[pref].erase(prefixes[pref].begin() + i);
+                i --;
+            }
+        }
+
+        for (auto val : prefixes[pref])
+            candidates.push_back(val);
+    }
+
+    for (auto &index : candidates)
     {
         auto entry = entries[index];
         std::string fileName = entry.name;

@@ -15,6 +15,8 @@ class MyApp : public AppListener,
 public:
     MyApp();
 
+    int prefixSize = 3;
+
     std::thread updateThread_;
     std::atomic<bool> running_ = true;
     ultralight::RefPtr<ultralight::View> mainCaller;
