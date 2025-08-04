@@ -17,6 +17,7 @@ public:
 
     std::thread updateThread_;
     std::atomic<bool> running_ = true;
+    ultralight::RefPtr<ultralight::View> mainCaller;
 
     HWND hwnd;
 
@@ -24,7 +25,8 @@ public:
     unsigned int width = WINDOW_WIDTH, height = WINDOW_HEIGHT;
 
     const std::string storageFile = "C:/Dev/WindowsFileSearch/src/FileList.txt";
-    std::vector<std::string> filesToGather = {};
+    std::vector<std::string> filesToGather = {"C:/Users/Shenasi/Downloads/", "C:/Users/Shenasi/Documents/",
+                                              "C:/Users/Shenasi/Desktop/"};
     virtual ~MyApp();
 
     // Start the run loop.

@@ -3,8 +3,6 @@
 
 std::vector<File> results;
 
-ultralight::RefPtr<ultralight::View> mainCaller;
-
 void MyApp::OpenFileByKeyboard(int index)
 {
     if (index < 0 || index >= results.size())
