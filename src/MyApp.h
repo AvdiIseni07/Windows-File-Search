@@ -1,5 +1,10 @@
 #pragma once
 #include <AppCore/AppCore.h>
+#include <thread>
+#include <atomic>
+#include <Windows.h>
+#include "File.h"
+#include <vector>
 using namespace ultralight;
 
 class MyApp : public AppListener,
@@ -10,6 +15,16 @@ class MyApp : public AppListener,
 public:
     MyApp();
 
+    std::thread updateThread_;
+    std::atomic<bool> running_ = true;
+
+    HWND hwnd;
+
+    unsigned int WINDOW_WIDTH = 800, WINDOW_HEIGHT = 400;
+    unsigned int width = WINDOW_WIDTH, height = WINDOW_HEIGHT;
+
+    const std::string storageFile = "C:/Dev/WindowsFileSearch/src/FileList.txt";
+    std::vector<std::string> filesToGather = {};
     virtual ~MyApp();
 
     // Start the run loop.
@@ -40,8 +55,43 @@ public:
     virtual void OnChangeCursor(ultralight::View *caller,
                                 Cursor cursor) override;
 
+    virtual void ToLowerCase(std::string &str);
+
     virtual void OnChangeTitle(ultralight::View *caller,
                                const String &title) override;
+
+    // Functions regarding the windows look
+    virtual void RoundCorners(int width, int height, int radius);
+
+    virtual void RemoveTaskbarIcon();
+
+    virtual void ResizeWindow(int new_width, int new_height);
+
+    // Functions that load the files
+    virtual void InitFiles();
+
+    virtual void LoadIndex();
+
+    virtual void OpenFileByKeyboard(int index);
+
+    // Functions for the interface
+    virtual JSValueRef OnSearch(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception);
+
+    virtual JSValueRef OnClick(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception);
+
+    virtual void GetFiles(const std::string &input);
+
+    // Stored in the disk as {name}\t{path}
+    struct FileEntry
+    {
+        std::string name, path;
+    };
+
+
+    std::vector<FileEntry> entries;
+    std::unordered_map<std::string, std::vector<size_t>> prefixes; // {prefix, index of element with that prefix};
+
+
 
 protected:
     RefPtr<App> app_;

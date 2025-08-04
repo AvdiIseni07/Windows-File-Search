@@ -6,76 +6,45 @@
 #include "platform/EmbeddedFileSystem.h"
 #include "AppCore/Window.h"
 #include <Windows.h>
-#include <ShlObj_core.h>
 
 #include <string>
 #include <inttypes.h>
 #include "File.h"
+#include <fstream>
 
 #include <WinUser.h>
+#include <chrono>
+#include <thread>
 
+#include <UIAutomation.h>
 #define WINDOW_WIDTH 800
 #define WINDOW_HEIGHT 400
 
 using namespace ultralight;
 
-RefPtr<Window> win;
-RefPtr<Overlay> _ovrlay;
+bool open = true;
 
-void RoundCorners(HWND hwnd, int width, int height, int radius)
+std::vector<std::pair<std::string, std::string>> allFiles; //{{name, path}}
+
+// Stored in the disk as {name}\t{path}
+struct FileEntry
 {
-    HRGN region = CreateRoundRectRgn(0, 0, width + 1, height + 1, radius * 2, radius * 2);
-    SetWindowRgn(hwnd, region, TRUE);
+    std::string name, path;
+};
+
+std::vector<FileEntry> entries;
+std::unordered_map<std::string, std::vector<size_t>> prefixes; // {prefix, index of element with that prefix};
+
+MyApp *_app;
+
+JSValueRef OnSearchWrapper(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
+{
+    return _app->OnSearch(ctx, function, thisObject, argumentCount, arguments, exception);
 }
 
-void removeTaskbarIcon()
+JSValueRef OnClickWrapper(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
 {
-    HWND hwnd = reinterpret_cast<HWND>(win->native_handle());
-
-    ITaskbarList *pTaskList = NULL;
-    HRESULT initRet = CoInitialize(NULL);
-    HRESULT createRet = CoCreateInstance(
-        CLSID_TaskbarList,
-        NULL,
-        CLSCTX_INPROC_SERVER,
-        IID_ITaskbarList,
-        (LPVOID *)&pTaskList);
-
-    if (createRet == S_OK)
-    {
-        pTaskList->DeleteTab(hwnd);
-        pTaskList->Release();
-    }
-
-    CoUninitialize();
-}
-
-// Needs to be done via windows functions so it is not cross-platform.
-void ResizeWindow(int new_width, int new_height)
-{
-    if (!win)
-        return;
-
-    // Grab the native HWND out of the RefPtr
-    HWND hwnd = reinterpret_cast<HWND>(win->native_handle());
-    // ShowWindow(hwnd, SW_HIDE);
-
-    // RoundCorners(hwnd, new_width, new_height, 5);
-    // Fetch current position so we only change size
-    RECT rect;
-    if (!GetWindowRect(hwnd, &rect))
-        return;
-
-    // Resize in place
-    SetWindowPos(
-        hwnd,
-        nullptr,               // keep same Z-order
-        rect.left, rect.top,   // keep same x/y
-        new_width, new_height, // new width/height
-        SWP_NOZORDER           // don’t move in z-order
-    );
-
-    _ovrlay->Resize((uint32_t)new_width, (uint32_t)new_height);
+    return _app->OnClick(ctx, function, thisObject, argumentCount, arguments, exception);
 }
 
 MyApp::MyApp()
@@ -84,24 +53,23 @@ MyApp::MyApp()
     /// Create our main App instance.
     ///
     app_ = App::Create();
-
+    // auto temp = this;
+    _app = this;
     ///
     /// Create a resizable window by passing by OR'ing our window flags with
     /// kWindowFlags_Resizable.
     ///
     window_ = Window::Create(app_->main_monitor(), WINDOW_WIDTH, WINDOW_HEIGHT,
                              false, kWindowFlags_Borderless);
+    window_->MoveToCenter();
 
     ///
     /// Create our HTML overlay-- we don't care about its initial size and
     /// position because it'll be calculated when we call OnResize() below.
     ///
     overlay_ = Overlay::Create(window_, 1, 1, 0, 0);
-    _ovrlay = overlay_;
 
-    // Set the size
-    win = window_;
-    // ResizeWindow(WINDOW_WIDTH, WINDOW_HEIGHT);
+    hwnd = reinterpret_cast<HWND>(window_->native_handle());
 
     ///
     /// Force a call to OnResize to perform size/layout of our overlay.
@@ -112,12 +80,56 @@ MyApp::MyApp()
     /// Load a   into our overlay's View
     ///
     overlay_->view()->LoadURL("file:///app.html");
+    // overlay_->view()->is_transparent = true;
 
     ///
     /// Register our MyApp instance as an AppListener so we can handle the
     /// App's OnUpdate event below.
     ///
+
     app_->set_listener(this);
+
+    ///
+    /// Show/Hide the window.
+    /// https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-registerhotkey
+    ///
+
+    updateThread_ = std::thread([this]()
+                                {
+                                    MSG msg{0};
+                                    RegisterHotKey(NULL, 0, MOD_ALT | MOD_NOREPEAT, 0x42);
+                                    RegisterHotKey(NULL, 1, MOD_NOREPEAT, 0x61);
+                                    RegisterHotKey(NULL, 1, MOD_NOREPEAT, 0x62);
+                                    RegisterHotKey(NULL, 1, MOD_NOREPEAT, 0x63);
+                                    RegisterHotKey(NULL, 1, MOD_NOREPEAT, 0x64);
+                                    RegisterHotKey(NULL, 1, MOD_NOREPEAT, 0x65);
+                                    RegisterHotKey(NULL, 1, MOD_NOREPEAT, 0x66);
+                                    RegisterHotKey(NULL, 1, MOD_NOREPEAT, 0x67);
+                                    RegisterHotKey(NULL, 1, MOD_NOREPEAT, 0x68);
+                                    RegisterHotKey(NULL, 1, MOD_NOREPEAT, 0x69);
+
+                                    
+                                    while(GetMessage(&msg, NULL, 0, 0))
+                                         if (msg.message == WM_HOTKEY)
+                                         {
+                                            if (msg.wParam == 0)
+                                            {
+                                                if (open)
+                                                    ResizeWindow(0, 0);
+                                                else
+                                                {
+                                                    ResizeWindow(WINDOW_WIDTH, height);
+                                                  
+                                                }
+                                                open = !open;
+
+                                            } 
+                                            else if (msg.wParam == 1)
+                                                {
+                                                    OpenFileByKeyboard(msg.wParam - 1);
+                                                }
+                                            
+                                         } });
 
     ///
     /// Register our MyApp instance as a WindowListener so we can handle the
@@ -136,10 +148,15 @@ MyApp::MyApp()
     /// View's OnChangeCursor and OnChangeTitle events below.
     ///
     overlay_->view()->set_view_listener(this);
+    ResizeWindow(WINDOW_WIDTH, WINDOW_HEIGHT);
 }
 
 MyApp::~MyApp()
 {
+    running_ = false;
+
+    if (updateThread_.joinable())
+        updateThread_.join();
 }
 
 void MyApp::Run()
@@ -147,45 +164,11 @@ void MyApp::Run()
     app_->Run();
 }
 
-void toLowerCase(std::string &str)
-{
-    for (char &c : str)
-    {
-        if (c >= 65 && c <= 90)
-        {
-            c += 32;
-        }
-    }
-}
-
-ultralight::View *mainCaller;
-std::string rootPath = "C:";
-std::vector<File> results;
-
-void listenForOpenCommand()
-{
-}
-
-bool open = true;
-unsigned int width = WINDOW_WIDTH, height = WINDOW_HEIGHT;
-
 void MyApp::OnUpdate()
 {
     ///
     /// This is called repeatedly from the application's update loop.
     ///
-
-    // Show/Hide the window.
-    // https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-getasynckeystate
-    if (GetAsyncKeyState(VK_LMENU) == -32767)
-    {
-        if (open)
-            ResizeWindow(0, 0);
-        else
-            ResizeWindow(WINDOW_WIDTH, height);
-
-        open = !open;
-    }
 }
 
 void MyApp::OnClose(ultralight::Window *window)
@@ -213,166 +196,15 @@ void MyApp::OnFinishLoading(ultralight::View *caller,
     ///
 }
 
-JSValueRef OnSearch(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
-{
-    if (mainCaller == nullptr)
-        return JSValueMakeNull(ctx);
-
-    String res = mainCaller->EvaluateScript("document.getElementById('search').value;");
-    String script = "message('" + res + "')";
-
-    std::string input = std::string(res.utf8().data(), res.utf8().length());
-    toLowerCase(input);
-
-    std::string filtered = input;
-    filtered.erase(std::remove(filtered.begin(), filtered.end(), ' '), filtered.end());
-
-    /*
-    int len = filtered.length();
-    String adaptedLen = String(std::to_string(len).c_str());
-    mainCaller->EvaluateScript("message('" + adaptedLen + "')");
-    */
-
-    // uint32_t windth = 100, height = 100;
-
-    // win->SetSize(windth, height);
-    // n++;
-    /* String getElements = mainCaller->EvaluateScript("document.getElementById('list').childElementCount;");
-     std::string numOfElements = std::string(getElements.utf8().data(), getElements.utf8().length());
-     int el = std::stoi(numOfElements);
-     height = 100 + el * 50;
-
-     if (height > 300 || el > 100)
-         height = 300;
-
-     ResizeWindow(WINDOW_WIDTH, height);*/
-
-    String getHeight = mainCaller->EvaluateScript("document.getElementById('list').getBoundingClientRect().height;");
-    std::string heightStr = std::string(getHeight.utf8().data(), getHeight.utf8().length());
-    int listHeight = std::stoi(heightStr);
-
-    // Add top padding, input, title, etc.
-    height = 300 + listHeight;
-    if (height > 600)
-        height = 600;
-    ResizeWindow(WINDOW_WIDTH, height);
-
-    if (filtered.length() > 0)
-    {
-
-        // Removing old results
-        // if (results.size() > 0)
-
-        for (int i = 0; i < results.size(); i++)
-        {
-            auto file = results[i];
-            std::string nameToString = std::string(file.GetName().utf8().data(), file.GetName().utf8().length());
-            toLowerCase(nameToString);
-
-            if (nameToString.find(input) == std::string::npos)
-            {
-                // mainCaller->EvaluateScript("message('deleting')");
-                String script = "deleteElement('" + file.GetName() + "')";
-                mainCaller->EvaluateScript(script);
-                results.erase(results.begin() + i);
-                i--;
-            }
-        }
-
-        // Showing results
-        try
-        {
-            for (const fs::directory_entry &entry : fs::directory_iterator(rootPath))
-            {
-                std::string fileName = entry.path().filename().u8string();
-                toLowerCase(fileName);
-
-                String adaptedFileName = String(fileName.c_str());
-
-                if (fileName.find(input) != std::string::npos)
-                {
-                    // Making sure the same file doesn't appear twice
-                    bool skip = false;
-                    for (auto &file : results)
-                    {
-                        if (file.GetName() == adaptedFileName)
-                        {
-                            skip = true;
-                            break;
-                        }
-                    }
-
-                    if (skip)
-                        continue;
-
-                    // mainCaller->EvaluateScript("message('Adding')");
-
-                    // Adding the file
-                    std::string path = entry.path().u8string();
-                    String adaptedPath = String(path.c_str());
-                    auto currentFile = File(entry, adaptedFileName, adaptedPath);
-                    results.push_back(currentFile);
-
-                    String script = "create('" + adaptedFileName + "')";
-                    mainCaller->EvaluateScript(script);
-                }
-            }
-        }
-        catch (std::system_error e)
-        {
-        }
-    }
-    else
-    {
-        if (results.size() == 0)
-            return JSValueMakeNull(ctx);
-
-        /// Clear the search.
-        for (auto &file : results)
-        {
-            String script = "deleteElement('" + file.GetName() + "')";
-            mainCaller->EvaluateScript(script);
-        }
-        results.clear();
-    }
-
-    return JSValueMakeNull(ctx);
-}
-
-JSValueRef OnClick(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception)
-{
-    JSStringRef jsStr = JSValueToStringCopy(ctx, arguments[0], nullptr);
-    size_t maxSize = JSStringGetMaximumUTF8CStringSize(jsStr);
-    std::vector<char> buffer(maxSize);
-    JSStringGetUTF8CString(jsStr, buffer.data(), maxSize);
-    JSStringRelease(jsStr);
-
-    std::string id = buffer.data();
-    String msg = String(id.c_str());
-
-    for (auto &file : results)
-    {
-        std::string nm = std::string(file.GetName().utf8().data(), file.GetName().utf8().length());
-        if (id == nm)
-        {
-            // std::string pth = std::string(file.GetPath().utf8().data(),file.GetPath().utf8().length());
-            // mainCaller->EvaluateScript("message('" + file.GetPath() + "');");
-
-            file.OpenFile();
-            break;
-        }
-    }
-
-    return JSValueMakeNull(ctx);
-}
-
 void MyApp::OnDOMReady(ultralight::View *caller,
                        uint64_t frame_id,
                        bool is_main_frame,
                        const String &url)
 {
-    listenForOpenCommand();
-    removeTaskbarIcon();
+
+    RemoveTaskbarIcon();
+    InitFiles();
+    LoadIndex();
 
     ///
     /// This is called when a frame's DOM has finished loading on the page.
@@ -382,8 +214,6 @@ void MyApp::OnDOMReady(ultralight::View *caller,
 
     if (!is_main_frame)
         return;
-
-    mainCaller = caller;
 
     // Acquire the JS execution context for the current page.
     auto scoped_context = caller->LockJSContext();
@@ -396,8 +226,9 @@ void MyApp::OnDOMReady(ultralight::View *caller,
 
     // Create a garbage-collected JavaScript function that is bound to our
     // native C callback 'OnSearch()'.
+
     JSObjectRef OnSearchFunc = JSObjectMakeFunctionWithCallback(ctx, onSearchName,
-                                                                OnSearch);
+                                                                OnSearchWrapper);
 
     // Get the global JavaScript object (aka 'window')
     JSObjectRef globalObj = JSContextGetGlobalObject(ctx);
@@ -410,7 +241,7 @@ void MyApp::OnDOMReady(ultralight::View *caller,
     JSStringRelease(onSearchName);
 
     JSStringRef onClickName = JSStringCreateWithUTF8CString("OnClick");
-    JSObjectRef onClickFunc = JSObjectMakeFunctionWithCallback(ctx, onClickName, OnClick);
+    JSObjectRef onClickFunc = JSObjectMakeFunctionWithCallback(ctx, onClickName, OnClickWrapper);
     JSObjectSetProperty(ctx, globalObj, onClickName, onClickFunc, 0, 0);
 
     JSStringRelease(onClickName);

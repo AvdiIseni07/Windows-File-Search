@@ -8,18 +8,17 @@
 namespace fs = std::filesystem;
 
 class File {
-    fs::directory_entry directoryEntry;
+
     ultralight::String name, path;
 
 public:
-    File(const fs::directory_entry& _directoryEntry,const ultralight::String& _name, const ultralight::String& _path);
+    File(const ultralight::String& _name, const ultralight::String& _path);
 
     void OpenFile();
     ultralight::String GetName();
     ultralight::String GetPath();
 
 };
-
 
 
 #endif //FILE_H

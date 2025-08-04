@@ -16,7 +16,11 @@ set(SOURCE_FILES "src/MyApp.h"
                  "src/MyApp.cpp"
                  "src/main.cpp"
                  "src/File.h"
-                 "src/File.cpp")
+                 "src/File.cpp"
+                 "src/InterfaceFunctions.cpp"
+                 "src/FileFunctions.cpp"
+                 "src/WindowFunctions.cpp"
+)
 
 if (SHOULD_EMBED_FILES)
 	set(SOURCE_FILES ${SOURCE_FILES}
