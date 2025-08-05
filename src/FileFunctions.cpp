@@ -64,7 +64,7 @@ void MyApp::LoadIndex()
 
         auto name = e.name;
 
-        // Getting the prefixes, TODO: Get all possible prefixes of a fixed size
+        // Getting the prefixes, TODO: Get all possible prefixes of a fixed size 
 
         for (int i = 0; i < name.length(); i++)
         {

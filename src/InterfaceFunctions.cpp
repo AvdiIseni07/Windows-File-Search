@@ -55,6 +55,10 @@ JSValueRef MyApp::OnSearch(JSContextRef ctx, JSObjectRef function, JSObjectRef t
             }
         }
 
+        // Custom command
+        if (input[0] == '.')
+            RunCustomCommand(input);
+
         // Showing results
         try
         {

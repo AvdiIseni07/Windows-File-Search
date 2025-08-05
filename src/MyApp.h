@@ -26,9 +26,8 @@ public:
     unsigned int WINDOW_WIDTH = 800, WINDOW_HEIGHT = 400;
     unsigned int width = WINDOW_WIDTH, height = WINDOW_HEIGHT;
 
-    const std::string storageFile = "C:/Dev/WindowsFileSearch/src/FileList.txt";
-    std::vector<std::string> filesToGather = {"C:/Users/Shenasi/Downloads/", "C:/Users/Shenasi/Documents/",
-                                              "C:/Users/Shenasi/Desktop/"};
+    const std::string storageFile = "FileList.txt";
+    std::vector<std::string> filesToGather = {};
     virtual ~MyApp();
 
     // Start the run loop.
@@ -84,6 +83,9 @@ public:
     virtual JSValueRef OnClick(JSContextRef ctx, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef *exception);
 
     virtual void GetFiles(const std::string &input);
+
+    // Functions for custom command
+    virtual void RunCustomCommand(const std::string &input);
 
     // Stored in the disk as {name}\t{path}
     struct FileEntry

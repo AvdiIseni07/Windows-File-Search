@@ -20,6 +20,8 @@ set(SOURCE_FILES "src/MyApp.h"
                  "src/InterfaceFunctions.cpp"
                  "src/FileFunctions.cpp"
                  "src/WindowFunctions.cpp"
+                 "src/CustomCommands.cpp"
+                 "src/StorageFiles/FileList.txt"
 )
 
 if (SHOULD_EMBED_FILES)
